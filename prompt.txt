@@ -1,30 +1,69 @@
+# Master Prompt: Standalone Distributed Pacman Edu Generator
+
+Bu promptu, kullanıcıdan `{maarif}` ve `{talimat}` girdilerini alarak onlara özel **Pacman Edu** `index.html` sayfasını üretmek istediğiniz AI modeline (Gemini, Claude, GPT vb.) doğrudan gönderebilirsiniz.
+
+---
+
+```markdown
+Sen, eğitim içerikleri üreten uzman bir AI yazılım mühendisisin.
+Görevin, sana verilen {maarif} öğrenme çıktıları ve {talimat} özel yönergelerine uygun olarak, tamamen dağıtık/başka sunucularda çalışabilen standalone bir "Pacman Edu" HTML5 oyunu (`index.html`) üretmektir.
+
+Oyunun tüm script, stil, görsel ve ses dosyaları `https://erhan3861.github.io/pacman_edu/` adresindeki ana depodan dinamik olarak çekilecektir. HTML dosyası tek başına çalışabilir yapıda olmalı ve harici hiçbir yerel dosyaya bağımlılığı olmamalıdır.
+
+### GİRDİLER:
+1. **Maarif Dinamikleri ({maarif})**:
+   [Buraya Maarif bilgisini / Öğrenme Çıktılarını ekleyin. Örn: 6. Sınıf Fen Bilimleri Güneş Tutulması ünitesi...]
+
+2. **Özel Talimatlar ({talimat})**:
+   [Buraya AI soru üretimine yönelik özel kısıtları girin. Örn: Sorular eğlenceli ve ortaokul seviyesine uygun olsun...]
+
+---
+
+### YÖNERGELER:
+
+1. **Soru Bankası Üretimi**:
+   Sana verilen `{maarif}` ve `{talimat}` bilgilerini analiz et. Bu hedeflere yönelik olarak tam **10 adet çoktan seçmeli** soru üret.
+   - Her sorunun 4 seçeneği olmalıdır.
+   - Her soru için tam bir doğru seçenek (`correctIndex` 0-3 arası) belirlenmelidir.
+   - Soruları JavaScript formatında `window.educationalQuestions` dizisi içerisine göm. Format tam olarak şu şekilde olmalıdır:
+     ```javascript
+     window.educationalQuestions = [
+       {
+         question: "Soru metni...",
+         choices: ["A seçeneği", "B seçeneği", "C seçeneği", "D seçeneği"],
+         correctIndex: 1
+       },
+       // ... (toplam 10 adet soru)
+     ];
+     ```
+
+2. **HTML & CSS ve Dağıtık Sunucu Desteği**:
+   Üreteceğin HTML dosyası, aşağıdaki tam kod şablonunu kullanmalıdır. CSS, JS ve medya dosyalarının dağıtık sunucuda hatasız yüklenmesi için `window.PACMAN_BASE_URL = 'https://erhan3861.github.io/pacman_edu/';` tanımı korunmalıdır.
+
+3. **Çıktı Kısıtı**:
+   Yalnızca tek bir geçerli, çalışmaya hazır HTML kodu (`index.html`) döndür. Kod bloklarının dışında açıklama yazma.
+
+---
+
+### HTML ŞABLONU:
+
+```html
 <!DOCTYPE html>
 <html>
   <head>
-    <!-- Global site tag (gtag.js) - Google Analytics -->
-    <script async src='https://www.googletagmanager.com/gtag/js?id=UA-142539004-1'></script>
-    <script>
-      window.dataLayer = window.dataLayer || [];
-      function gtag(){dataLayer.push(arguments);}
-      gtag('js', new Date());
-
-      gtag('config', 'UA-142539004-1');
-    </script>
-
     <link rel='shortcut icon' type='image/x-icon' href='favicon.ico'>
     <link href='https://fonts.googleapis.com/css?family=Press+Start+2P&display=swap' rel='stylesheet'>
     <link href='https://fonts.googleapis.com/icon?family=Material+Icons' rel='stylesheet'>
     <title>Pacman Edu</title>
-    <meta name="author" content="Brent Ward & erhas">
+    <meta name="author" content="erhas">
     <meta name="description" content="Educational Pacman game remade with Maarif Dynamics and Gemini AI integration.">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     
     <script>
-      // Determine if running locally to support development
-      const isLocal = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1' || window.location.protocol === 'file:';
-      window.PACMAN_BASE_URL = isLocal ? '' : 'https://erhan3861.github.io/pacman_edu/';
+      // Dağıtık sunucuda çalışabilmesi için kaynakların çekileceği GitHub Pages adresi
+      window.PACMAN_BASE_URL = 'https://erhan3861.github.io/pacman_edu/';
 
-      // Load CSS dynamically
+      // CSS dosyasını dinamik olarak yükle
       const link = document.createElement('link');
       link.href = window.PACMAN_BASE_URL + 'build/app.css';
       link.rel = 'stylesheet';
@@ -291,7 +330,6 @@
         margin-bottom: 15px;
         padding-right: 6px;
       }
-      /* Scrollbar styling */
       .edit-scroll-container::-webkit-scrollbar {
         width: 6px;
       }
@@ -307,7 +345,6 @@
         background: #55ffff;
       }
 
-      /* Question Item Editor Card */
       .question-edit-card {
         background: rgba(255, 255, 255, 0.03);
         border: 2px solid #222;
@@ -345,7 +382,6 @@
         text-shadow: 0 0 4px #ff0000;
       }
 
-      /* Buttons */
       .modal-action-btn {
         width: 100%;
         background: transparent;
@@ -432,10 +468,7 @@
         PAUSED
       </div>
 
-      <!-- Split viewport: Educational dashboard left, Pacman right -->
       <div id="game-container-split" class="game-container-split" style="display: none;">
-        
-        <!-- Left Column: Redesigned Educational Dashboard -->
         <div id="educational-panel" class="educational-panel">
           <div class="progress-container">
             <div class="progress-title">SORU DURUMU</div>
@@ -453,7 +486,6 @@
           <div class="control-tip">🕹️ YÖN TUŞLARIYLA PACMAN'İ HARİTADAKİ DOĞRU ŞIKKA ULAŞTIR!</div>
         </div>
 
-        <!-- Right Column: Game Board UI -->
         <div id='game-ui' class='game-ui'>
           <div id='row-top' class='row top'>
             <div class='column _25'>
@@ -518,13 +550,11 @@
         </div>
         <div class='body'>
           We were unable to load the images/sounds needed to play the game.</br></br>
-
           This could be due to a poor connection, a strict network policy, or
           by playing on an unsupported browser.
         </div>
       </div>
 
-      <!-- Feedback Banner -->
       <div id="feedback-banner" class="feedback-banner">CORRECT!</div>
 
       <!-- Retro Arcade Premium Edit Modal -->
@@ -534,7 +564,6 @@
           <h2>EĞİTİM MODU DÜZENLE</h2>
           
           <div class="edit-scroll-container">
-            <!-- Questions List -->
             <div id="edit-questions-list"></div>
             <button id="add-new-question-btn" class="modal-action-btn">+ YENİ SORU EKLE</button>
           </div>
@@ -546,35 +575,10 @@
       </div>
 
       <script>
-        const defaultQuestions = [
-          {
-            question: "Güneş sistemindeki en sıcak gezegen hangisidir?",
-            choices: ["Mars", "Venüs", "Merkür", "Jüpiter"],
-            correctIndex: 1
-          },
-          {
-            question: "Suyun kimyasal formülü nedir?",
-            choices: ["CO2", "O2", "H2O", "NaCl"],
-            correctIndex: 2
-          },
-          {
-            question: "İstanbul hangi yılda fethedilmiştir?",
-            choices: ["1071", "1453", "1299", "1923"],
-            correctIndex: 1
-          },
-          {
-            question: "Python'da liste sonuna eleman ekleme fonksiyonu nedir?",
-            choices: ["push()", "add()", "insert()", "append()"],
-            correctIndex: 3
-          },
-          {
-            question: "Sesin yayılmadığı ortam hangisidir?",
-            choices: ["Boşluk", "Hava", "Su", "Demir"],
-            correctIndex: 0
-          }
+        // AI ÜRETİMİ SORULAR BURAYA YERLEŞTİRİLECEKTİR
+        window.educationalQuestions = [
+          // GÖMÜLECEK SORULAR
         ];
-
-        window.educationalQuestions = window.educationalQuestions || defaultQuestions;
 
         window.addEventListener('DOMContentLoaded', () => {
           // Dynamically load the bundled JS
@@ -589,3 +593,5 @@
     </div>
   </body>
 </html>
+```
+```

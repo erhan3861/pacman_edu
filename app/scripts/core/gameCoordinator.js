@@ -112,7 +112,113 @@ class GameCoordinator {
       this.soundButtonClick.bind(this),
     );
 
+    this.setupEditModal();
     this.preloadAssets();
+  }
+
+  setupEditModal() {
+    this.editModal = document.getElementById('education-edit-modal');
+    this.editQuestionsList = document.getElementById('edit-questions-list');
+    this.addNewQuestionBtn = document.getElementById('add-new-question-btn');
+    this.saveModalBtn = document.getElementById('save-modal-btn');
+    this.closeModalBtn = document.querySelector('.close-modal-btn');
+    this.gameEditBtn = document.getElementById('game-edit');
+    this.currentQuestions = [];
+
+    if (this.gameEditBtn) {
+      this.gameEditBtn.addEventListener('click', () => {
+        this.currentQuestions = JSON.parse(JSON.stringify(this.educationalQuestions));
+        this.renderEditQuestions();
+        if (this.editModal) {
+          this.editModal.style.display = 'flex';
+        }
+      });
+    }
+
+    if (this.closeModalBtn) {
+      this.closeModalBtn.addEventListener('click', () => {
+        if (this.editModal) {
+          this.editModal.style.display = 'none';
+        }
+      });
+    }
+
+    if (this.addNewQuestionBtn) {
+      this.addNewQuestionBtn.addEventListener('click', () => {
+        this.currentQuestions.push({
+          question: "Yeni Soru?",
+          choices: ["Seçenek A", "Seçenek B", "Seçenek C", "Seçenek D"],
+          correctIndex: 0
+        });
+        this.renderEditQuestions();
+      });
+    }
+
+    if (this.saveModalBtn) {
+      this.saveModalBtn.addEventListener('click', () => {
+        this.educationalQuestions = this.currentQuestions;
+        window.educationalQuestions = this.currentQuestions;
+        if (this.editModal) {
+          this.editModal.style.display = 'none';
+        }
+        this.currentQuestionIndex = 0;
+        this.loadCurrentQuestion();
+      });
+    }
+
+    window.deleteQuestion = (idx) => {
+      this.currentQuestions.splice(idx, 1);
+      this.renderEditQuestions();
+    };
+
+    window.updateQuestionText = (idx, val) => {
+      this.currentQuestions[idx].question = val;
+    };
+
+    window.updateChoiceText = (qIdx, cIdx, val) => {
+      this.currentQuestions[qIdx].choices[cIdx] = val;
+    };
+
+    window.updateCorrectIndex = (qIdx, cIdx) => {
+      this.currentQuestions[qIdx].correctIndex = cIdx;
+      this.renderEditQuestions();
+    };
+  }
+
+  renderEditQuestions() {
+    if (!this.editQuestionsList) return;
+    this.editQuestionsList.innerHTML = '';
+    
+    this.currentQuestions.forEach((q, qIdx) => {
+      const card = document.createElement('div');
+      card.className = 'question-edit-card';
+      
+      let choicesHtml = '';
+      q.choices.forEach((choice, cIdx) => {
+        const isCorrect = q.correctIndex === cIdx;
+        choicesHtml += `
+          <div class="choice-edit-item ${isCorrect ? 'correct' : ''}" style="display:flex; align-items:center; background:#111; border:1px solid ${isCorrect ? '#00ff55' : '#444'}; border-radius:4px; padding:4px 6px;">
+            <input type="radio" name="correct-${qIdx}" ${isCorrect ? 'checked' : ''} onchange="updateCorrectIndex(${qIdx}, ${cIdx})" style="margin-right:6px; cursor:pointer;">
+            <input type="text" value="${choice.replace(/"/g, '&quot;')}" onchange="updateChoiceText(${qIdx}, ${cIdx}, this.value)" style="background:transparent; border:none; color:#fff; font-family:inherit; font-size:8px; width:100%; outline:none;">
+          </div>
+        `;
+      });
+
+      card.innerHTML = `
+        <div class="question-edit-header">
+          <span>SORU #${qIdx + 1}</span>
+          <button class="delete-question-btn" onclick="deleteQuestion(${qIdx})">SİL</button>
+        </div>
+        <div class="input-row">
+          <label style="display:block; font-size:7px; margin-bottom:5px; color:#aaa;">Soru Metni</label>
+          <textarea class="q-text-input" style="width:100%; height:40px; background:#000; border:1px solid #444; color:#fff; padding:6px; box-sizing:border-box; font-family:inherit; font-size:8px; border-radius:4px;" onchange="updateQuestionText(${qIdx}, this.value)">${q.question}</textarea>
+        </div>
+        <div class="choices-edit-grid" style="display:grid; grid-template-columns:1fr 1fr; gap:6px; margin-top:8px;">
+          ${choicesHtml}
+        </div>
+      `;
+      this.editQuestionsList.appendChild(card);
+    });
   }
 
   /**
