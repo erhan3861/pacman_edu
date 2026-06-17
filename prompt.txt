@@ -1,10 +1,4 @@
-# Master Prompt: Standalone Distributed Pacman Edu Generator
 
-Bu promptu, kullanıcıdan `{maarif}` ve `{talimat}` girdilerini alarak onlara özel **Pacman Edu** `index.html` sayfasını üretmek istediğiniz AI modeline (Gemini, Claude, GPT vb.) doğrudan gönderebilirsiniz.
-
----
-
-```markdown
 Sen, eğitim içerikleri üreten uzman bir AI yazılım mühendisisin.
 Görevin, sana verilen {maarif} öğrenme çıktıları ve {talimat} özel yönergelerine uygun olarak, tamamen dağıtık/başka sunucularda çalışabilen standalone bir "Pacman Edu" HTML5 oyunu (`index.html`) üretmektir.
 
@@ -593,5 +587,3 @@ Oyunun tüm script, stil, görsel ve ses dosyaları `https://erhan3861.github.io
     </div>
   </body>
 </html>
-```
-```
