@@ -1,3 +1,20 @@
+const SafeStorage = {
+  getItem(key) {
+    try {
+      return localStorage.getItem(key);
+    } catch (e) {
+      return null;
+    }
+  },
+  setItem(key, value) {
+    try {
+      localStorage.setItem(key, value);
+    } catch (e) {
+      // Ignore
+    }
+  }
+};
+
 class Ghost {
   constructor(scaledTileSize, mazeArray, pacman, name, level, characterUtil, blinky) {
     this.scaledTileSize = scaledTileSize;
@@ -1364,7 +1381,7 @@ class GameCoordinator {
   soundButtonClick() {
     const newVolume = this.soundManager.masterVolume === 1 ? 0 : 1;
     this.soundManager.setMasterVolume(newVolume);
-    localStorage.setItem('volumePreference', newVolume);
+    SafeStorage.setItem('volumePreference', newVolume);
     this.setSoundButtonIcon(newVolume);
   }
 
@@ -1601,7 +1618,7 @@ class GameCoordinator {
     this.allowPacmanMovement = false;
     this.allowPause = false;
     this.cutscene = true;
-    this.highScore = localStorage.getItem('highScore');
+    this.highScore = SafeStorage.getItem('highScore');
 
     this.educationalQuestions = window.educationalQuestions || [];
     this.currentQuestionIndex = 0;
@@ -1701,7 +1718,7 @@ class GameCoordinator {
     this.clearDisplay(this.fruitDisplay);
 
     const volumePreference = parseInt(
-      localStorage.getItem('volumePreference') || 1,
+      SafeStorage.getItem('volumePreference') || 1,
       10,
     );
     this.setSoundButtonIcon(volumePreference);
@@ -2043,7 +2060,7 @@ class GameCoordinator {
     if (this.points > (this.highScore || 0)) {
       this.highScore = this.points;
       this.highScoreDisplay.innerText = this.points;
-      localStorage.setItem('highScore', this.highScore);
+      SafeStorage.setItem('highScore', this.highScore);
     }
 
     if (this.points >= 10000 && !this.extraLifeGiven) {
@@ -2128,7 +2145,7 @@ class GameCoordinator {
    * Displays GAME OVER text and displays the menu so players can play again
    */
   gameOver() {
-    localStorage.setItem('highScore', this.highScore);
+    SafeStorage.setItem('highScore', this.highScore);
     if (this.gameContainerSplit) {
       this.gameContainerSplit.style.display = 'none';
     }
