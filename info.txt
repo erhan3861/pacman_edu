@@ -1,0 +1,75 @@
+================================================================================
+STANDALONE / DAĞITIK VE SANDBOX UYUMLU HTML5 OYUN GELİŞTİRME ESASLARI (ÖZETİ)
+================================================================================
+
+Bu belgede, bir HTML5 oyununun (veya web uygulamasının) başka bir sunucuda (örneğin 
+talent14.com) veya sandboxed iframe'ler (online editörler, WebView'lar vb.) 
+içerisinde sıfır hata ve yüksek uyumlulukla bağımsız çalışabilmesi için 
+uyulması gereken temel yazılım mimarisi kuralları özetlenmiştir.
+
+--------------------------------------------------------------------------------
+1. DINAMIK DILIMLI YOL ÇÖZÜMLEME (window.PACMAN_BASE_URL)
+--------------------------------------------------------------------------------
+- Harici sunucularda çalışacak HTML dosyaları, resim, ses, css veya js gibi 
+  kaynakları yerel yollardan çekmemelidir.
+- Bunun yerine global bir değişken (örn: `window.PACMAN_BASE_URL = 'https://...'`) 
+  üzerinden tüm yollar dinamik inşa edilmelidir:
+  * JS/CSS yükleme: `const src = window.PACMAN_BASE_URL + 'app.js';`
+  * HTML Görselleri: `logoImg.src = (window.PACMAN_BASE_URL || '') + 'logo.png';`
+- CSS içindeki `url(...)` tanımları, yüklendiği stil dosyasının konumuna göre 
+  tarayıcı tarafından çözümlendiği için CSS'teki bağıl yollar bozulmaz.
+
+--------------------------------------------------------------------------------
+2. CORS ENGELSİZ SES SİSTEMİ (Standart HTML5 Audio)
+--------------------------------------------------------------------------------
+- Web Audio API (`AudioContext` ve `fetch`) kullanımı, ses dosyalarını ikili (binary) 
+  tampon belleğe çekmeye çalışır ve katı CORS (Çapraz Köken Paylaşımı) kurallarına tabidir. 
+  Statik sunucular (örn: GitHub Pages) ses dosyaları için CORS izin başlığı göndermezse oyun kilitlenir.
+- ÇÖZÜM: Ses çalma işlemlerinde tarayıcının CORS engeline takılmayan standart 
+  `new Audio(url)` elementleri kullanılmalıdır.
+- Hızlı/Sık tetiklenen sesler için (örn: Pacman dot yeme sesi) önceden yüklenmiş 
+  (preload="auto") birden fazla Audio elementi oluşturulup sıra ile (`currentTime = 0; play()`) 
+  çaldırılarak performans ve kesintisiz ritim sağlanabilir.
+
+--------------------------------------------------------------------------------
+3. SANDBOX IFRAME & DİNAMİK YÜKLEME UYUMLULUĞU (document.readyState)
+--------------------------------------------------------------------------------
+- Çoğu online görüntüleyici veya sandboxed iframe (örn: `srcdoc` parametreli yapılar), 
+  kodları dinamik olarak sonradan yükler. Bu durumda `DOMContentLoaded` olayı (event) 
+  bizim kodumuz çalıştırılmadan çok önce tetiklenmiş olabilir.
+- Sadece `window.addEventListener('DOMContentLoaded', ...)` kullanmak, kodun hiç 
+  çalışmamasına ve ekranın yüklenmede takılı kalmasına (freeze) sebep olur.
+- ÇÖZÜM: Tüm başlangıç fonksiyonları ve DOM müdahaleleri öncesinde sayfa yüklenme 
+  durumu kontrol edilmelidir:
+  ```javascript
+  function init() {
+    // Başlangıç kodları...
+  }
+  if (document.readyState === 'complete' || document.readyState === 'interactive') {
+    init();
+  } else {
+    window.addEventListener('DOMContentLoaded', init);
+  }
+  ```
+
+--------------------------------------------------------------------------------
+4. GÜVENLİ STORAGE YÖNETİMİ (SafeStorage ve localStorage Koruması)
+--------------------------------------------------------------------------------
+- Iframe'lerin `sandbox` özniteliği `allow-same-origin` değerine sahip değilse, 
+  tarayıcılar güvenlik gerekçesiyle `window.localStorage` okuma/yazma işlemlerine 
+  KESİNLİKLE izin vermez ve doğrudan `SecurityError` fırlatır. Bu hata yakalanmazsa JS çöker.
+- ÇÖZÜM: Kod içerisinde doğrudan `localStorage` metotları çağrılmamalı, tüm depolama 
+  erişimleri hata kontrolü (`try...catch`) yapan bir güvenli aracı sınıf üzerinden yönetilmelidir:
+  ```javascript
+  const SafeStorage = {
+    getItem(key) {
+      try { return localStorage.getItem(key); } catch (e) { return null; }
+    },
+    setItem(key, value) {
+      try { localStorage.setItem(key, value); } catch (e) {}
+    }
+  };
+  ```
+  Böylece depolama engellense bile oyun çökmeyecek, sadece veri kaydetme özellikleri 
+  pasif şekilde stabil çalışmaya devam edecektir.
+================================================================================
