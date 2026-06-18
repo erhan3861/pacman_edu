@@ -59,9 +59,24 @@ Oyunun tüm script, stil, görsel ve ses dosyaları `https://erhan3861.github.io
 
       // CSS dosyasını dinamik olarak yükle
       const link = document.createElement('link');
-      link.href = window.PACMAN_BASE_URL + 'build/app.css';
+      link.href = window.PACMAN_BASE_URL + 'style.css';
       link.rel = 'stylesheet';
       document.head.appendChild(link);
+
+      // Dynamic resource path setup for cross-origin hosting
+      function setupImages() {
+        const baseUrl = window.PACMAN_BASE_URL || '';
+        const logo = document.getElementById('logo');
+        if (logo) logo.src = baseUrl + 'app/style/graphics/pacman_logo.png';
+        const mazeImg = document.getElementById('maze-img');
+        if (mazeImg) mazeImg.src = baseUrl + 'app/style/graphics/spriteSheets/maze/maze_blue.svg';
+      }
+
+      if (document.readyState === 'complete' || document.readyState === 'interactive') {
+        setupImages();
+      } else {
+        document.addEventListener("DOMContentLoaded", setupImages);
+      }
     </script>
     
     <style>
@@ -574,15 +589,21 @@ Oyunun tüm script, stil, görsel ve ses dosyaları `https://erhan3861.github.io
           // GÖMÜLECEK SORULAR
         ];
 
-        window.addEventListener('DOMContentLoaded', () => {
+        function initGame() {
           // Dynamically load the bundled JS
           const script = document.createElement('script');
-          script.src = window.PACMAN_BASE_URL + 'build/app.js';
+          script.src = window.PACMAN_BASE_URL + 'app.js';
           script.onload = () => {
             window.gameCoordinator = new GameCoordinator();
           };
           document.body.appendChild(script);
-        });
+        }
+
+        if (document.readyState === 'complete' || document.readyState === 'interactive') {
+          initGame();
+        } else {
+          window.addEventListener('DOMContentLoaded', initGame);
+        }
       </script>
     </div>
   </body>

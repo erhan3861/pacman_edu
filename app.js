@@ -1085,6 +1085,16 @@ class GameCoordinator {
     this.currentQuestionIndex = 0;
     this.activeAnswerPickups = [];
 
+    // Dynamically set image sources using PACMAN_BASE_URL to resolve cross-origin issues
+    const baseUrl = window.PACMAN_BASE_URL || '';
+    if (this.mazeImg) {
+      this.mazeImg.src = baseUrl + 'app/style/graphics/spriteSheets/maze/maze_blue.svg';
+    }
+    const logoImg = document.getElementById('logo');
+    if (logoImg) {
+      logoImg.src = baseUrl + 'app/style/graphics/pacman_logo.png';
+    }
+
     this.mazeArray = [
       ['XXXXXXXXXXXXXXXXXXXXXXXXXXXX'],
       ['XooooooooooooXXooooooooooooX'],
@@ -1389,7 +1399,7 @@ class GameCoordinator {
       const loadingPacman = document.getElementById('loading-pacman');
       const loadingDotMask = document.getElementById('loading-dot-mask');
 
-      const imgBase = 'app/style/graphics/spriteSheets/';
+      const imgBase = (window.PACMAN_BASE_URL || '') + 'app/style/graphics/spriteSheets/';
       const imgSources = [
         // Pacman
         `${imgBase}characters/pacman/arrow_down.svg`,
@@ -1478,10 +1488,10 @@ class GameCoordinator {
         `${imgBase}maze/maze_blue.svg`,
 
         // Misc
-        'app/style/graphics/extra_life.svg',
+        (window.PACMAN_BASE_URL || '') + 'app/style/graphics/extra_life.svg',
       ];
 
-      const audioBase = 'app/style/audio/';
+      const audioBase = (window.PACMAN_BASE_URL || '') + 'app/style/audio/';
       const audioSources = [
         `${audioBase}game_start.mp3`,
         `${audioBase}pause.mp3`,
@@ -1835,7 +1845,7 @@ class GameCoordinator {
 
     for (let i = 0; i < this.lives; i += 1) {
       const extraLifePic = document.createElement('img');
-      extraLifePic.setAttribute('src', 'app/style/graphics/extra_life.svg');
+      extraLifePic.setAttribute('src', (window.PACMAN_BASE_URL || '') + 'app/style/graphics/extra_life.svg');
       extraLifePic.style.height = `${this.scaledTileSize * 2}px`;
       this.extraLivesDisplay.appendChild(extraLifePic);
     }
@@ -2235,7 +2245,7 @@ class GameCoordinator {
     this.removeTimer({ detail: { timer: this.endIdleTimer } });
     this.removeTimer({ detail: { timer: this.ghostFlashTimer } });
 
-    const imgBase = 'app/style//graphics/spriteSheets/maze/';
+    const imgBase = (window.PACMAN_BASE_URL || '') + 'app/style/graphics/spriteSheets/maze/';
 
     new Timer(() => {
       this.ghosts.forEach((ghost) => {
@@ -2437,8 +2447,8 @@ class GameCoordinator {
 
     pointsDiv.style.position = 'absolute';
     pointsDiv.style.backgroundSize = `${width}px`;
-    pointsDiv.style.backgroundImage = 'url(app/style/graphics/'
-        + `spriteSheets/text/${amount}.svg`;
+    pointsDiv.style.backgroundImage = 'url(' + (window.PACMAN_BASE_URL || '') + 'app/style/graphics/'
+        + `spriteSheets/text/${amount}.svg)`;
     pointsDiv.style.width = `${width}px`;
     pointsDiv.style.height = `${height || width}px`;
     pointsDiv.style.top = `${position.top}px`;
@@ -3439,46 +3449,16 @@ class SoundManager {
     this.paused = false;
     this.cutscene = true;
 
-    const AudioContext = window.AudioContext || window.webkitAudioContext;
-    this.ambience = new AudioContext();
-
-    // Dedicated AudioContext for dot sounds (mobile optimization)
-    this.dotContext = new AudioContext();
-    this.dotGain = this.dotContext.createGain();
-    this.dotGain.gain.value = 1;
-    this.dotGain.connect(this.dotContext.destination);
-
-    // Pre-load dot sound buffers
-    this.dotBuffers = {};
-    this.initializeDotSounds();
-
     // Dot sound state
     this.dotSound = 0; // Will alternate between 1 and 2
     this.queuedDotSound = false;
     this.dotPlayerActive = false;
-  }
 
-  /**
-   * Pre-loads both dot sound buffers for instant playback
-   */
-  async initializeDotSounds() {
-    const [response1, response2] = await Promise.all([
-      fetch(`${this.baseUrl}dot_1.${this.fileFormat}`),
-      fetch(`${this.baseUrl}dot_2.${this.fileFormat}`),
-    ]);
-
-    const [arrayBuffer1, arrayBuffer2] = await Promise.all([
-      response1.arrayBuffer(),
-      response2.arrayBuffer(),
-    ]);
-
-    const [audioBuffer1, audioBuffer2] = await Promise.all([
-      this.dotContext.decodeAudioData(arrayBuffer1),
-      this.dotContext.decodeAudioData(arrayBuffer2),
-    ]);
-
-    this.dotBuffers[1] = audioBuffer1;
-    this.dotBuffers[2] = audioBuffer2;
+    // Pre-initialize two Audio elements for the alternating dot eating sounds
+    this.dotAudio1 = new Audio(`${this.baseUrl}dot_1.${this.fileFormat}`);
+    this.dotAudio2 = new Audio(`${this.baseUrl}dot_2.${this.fileFormat}`);
+    this.dotAudio1.preload = 'auto';
+    this.dotAudio2.preload = 'auto';
   }
 
   /**
@@ -3500,10 +3480,12 @@ class SoundManager {
       this.soundEffect.volume = this.masterVolume;
     }
 
-    // Update dot sound gain
-    if (this.dotGain) {
-      this.dotGain.gain.value = this.masterVolume;
+    if (this.ambienceAudio) {
+      this.ambienceAudio.volume = this.masterVolume;
     }
+
+    if (this.dotAudio1) this.dotAudio1.volume = this.masterVolume;
+    if (this.dotAudio2) this.dotAudio2.volume = this.masterVolume;
 
     if (this.masterVolume === 0) {
       this.stopAmbience();
@@ -3519,37 +3501,37 @@ class SoundManager {
   play(sound) {
     this.soundEffect = new Audio(`${this.baseUrl}${sound}.${this.fileFormat}`);
     this.soundEffect.volume = this.masterVolume;
-    this.soundEffect.play();
+    this.soundEffect.play().catch(e => console.log('Audio play failed:', e));
   }
 
   /**
-   * Special method for eating dots. The dots should alternate between two
-   * sound effects, but not too quickly. Uses pre-loaded AudioBuffers for
-   * instant playback on mobile.
+   * Special method for eating dots. Alternates between two preloaded Audio
+   * elements to preserve "wa ka" timing without CORS issues.
    */
   playDotSound() {
     this.queuedDotSound = true;
 
-    if (!this.dotPlayerActive && this.dotBuffers[1] && this.dotBuffers[2]) {
+    if (!this.dotPlayerActive) {
       this.queuedDotSound = false;
       this.dotPlayerActive = true;
 
       // Alternate between dot sounds
       this.dotSound = (this.dotSound === 1) ? 2 : 1;
+      const currentDotAudio = this.dotSound === 1 ? this.dotAudio1 : this.dotAudio2;
 
-      // Create a new BufferSourceNode (cheap operation)
-      const source = this.dotContext.createBufferSource();
-      source.buffer = this.dotBuffers[this.dotSound];
-      source.connect(this.dotGain);
-
-      // Play immediately
-      source.start(0);
-
-      // Use setTimeout with buffer duration + 100ms gap to preserve "wa ka" timing
-      const { duration } = this.dotBuffers[this.dotSound];
-      setTimeout(() => {
-        this.dotSoundEnded();
-      }, (duration * 1000) + 100);
+      currentDotAudio.volume = this.masterVolume;
+      currentDotAudio.currentTime = 0;
+      currentDotAudio.play()
+        .then(() => {
+          // Dot sound is typically very short. Use 150ms to preserve "wa ka" timing.
+          setTimeout(() => {
+            this.dotSoundEnded();
+          }, 150);
+        })
+        .catch(e => {
+          console.log('Dot sound play failed:', e);
+          this.dotSoundEnded();
+        });
     }
   }
 
@@ -3569,7 +3551,7 @@ class SoundManager {
    * @param {String} sound
    */
   async setAmbience(sound, keepCurrentAmbience) {
-    if (!this.fetchingAmbience && !this.cutscene) {
+    if (!this.cutscene) {
       if (!keepCurrentAmbience) {
         this.currentAmbience = sound;
         this.paused = false;
@@ -3577,25 +3559,15 @@ class SoundManager {
         this.paused = true;
       }
 
-      if (this.ambienceSource) {
-        this.ambienceSource.stop();
+      if (this.ambienceAudio) {
+        this.ambienceAudio.pause();
       }
 
       if (this.masterVolume !== 0) {
-        this.fetchingAmbience = true;
-        const response = await fetch(
-          `${this.baseUrl}${sound}.${this.fileFormat}`,
-        );
-        const arrayBuffer = await response.arrayBuffer();
-        const audioBuffer = await this.ambience.decodeAudioData(arrayBuffer);
-
-        this.ambienceSource = this.ambience.createBufferSource();
-        this.ambienceSource.buffer = audioBuffer;
-        this.ambienceSource.connect(this.ambience.destination);
-        this.ambienceSource.loop = true;
-        this.ambienceSource.start();
-
-        this.fetchingAmbience = false;
+        this.ambienceAudio = new Audio(`${this.baseUrl}${sound}.${this.fileFormat}`);
+        this.ambienceAudio.loop = true;
+        this.ambienceAudio.volume = this.masterVolume;
+        this.ambienceAudio.play().catch(e => console.log('Ambience play failed:', e));
       }
     }
   }
@@ -3604,14 +3576,10 @@ class SoundManager {
    * Resumes the ambience
    */
   resumeAmbience(paused) {
-    if (this.ambienceSource) {
-      // Resetting the ambience since an AudioBufferSourceNode can only
-      // have 'start()' called once
-      if (paused) {
-        this.setAmbience('pause_beat', true);
-      } else {
-        this.setAmbience(this.currentAmbience);
-      }
+    if (paused) {
+      this.setAmbience('pause_beat', true);
+    } else {
+      this.setAmbience(this.currentAmbience);
     }
   }
 
@@ -3619,8 +3587,8 @@ class SoundManager {
    * Stops the ambience
    */
   stopAmbience() {
-    if (this.ambienceSource) {
-      this.ambienceSource.stop();
+    if (this.ambienceAudio) {
+      this.ambienceAudio.pause();
     }
   }
 }
